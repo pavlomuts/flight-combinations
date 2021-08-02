@@ -1,0 +1,1 @@
+Print all flight combinations for a selected route
