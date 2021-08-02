@@ -1,7 +1,7 @@
 
-import csv
+from parser import parse_args
+from combinations import compute
 
-with open('example/example0.csv') as file:
-    reader = csv.reader(file)
-    for row in reader:
-        print(row)
+input = parse_args()
+
+
