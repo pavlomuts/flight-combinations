@@ -14,7 +14,8 @@ def generate_combinations(input):
 
     time_table = get_data(data_source)
 
-    construct_routes(origin, destination, bags_count, time_table)
+    construct_routes(origin, destination, bags_count,
+                     time_table, return_flight)
 
 
 def get_data(path_to_file):
@@ -83,43 +84,47 @@ def add_trip_data(all_routes, origin, destination, bags_count):
     return ext_data_all_routes
 
 
-def construct_routes(origin, destination, bags_count, time_table):
+def construct_routes_helper(A, B, bags, time_table, min_layover, max_layover, start_time=None):
 
     final_routes = []
     intermediate_routes = []
 
     for flight in time_table:
 
-        if flight['origin'] == origin and bags_count <= flight['bags_allowed']:
-            if flight['destination'] == destination:
-                final_routes.append([flight])
-            else:
-                intermediate_routes.append([flight])
+        if start_time is None:
+            if flight['origin'] == A and bags <= flight['bags_allowed']:
+
+                if flight['destination'] == B:
+                    final_routes.append([flight])
+                else:
+                    intermediate_routes.append([flight])
+
+        else:
+            if (flight['departure'] > start_time and flight['origin'] == A and
+                    bags <= flight['bags_allowed']):
+
+                if flight['destination'] == B:
+                    final_routes.append([flight])
+                else:
+                    intermediate_routes.append([flight])
 
     while intermediate_routes:
 
         current_route = intermediate_routes.pop()
         airports_visited = set(item['origin'] for item in current_route)
 
-        # select the flights with the restrictions:
-        # - no airports are repeated in the route
-        # - layover at least 1 hour max 6 hours
-
-        min_layover = datetime.timedelta(hours=1)
-        max_layover = datetime.timedelta(hours=6)
-
         for flight in time_table:
 
             # consider only the airports where we arrived
             if flight['origin'] == current_route[-1]['destination']:
-                
+
                 # compute layover time for this leg
                 layover = flight['departure'] - current_route[-1]['arrival']
 
                 # apply the restrictions above
-                if (flight['destination'] not in airports_visited and 
-                    layover >= min_layover and layover <= max_layover and 
-                    bags_count <= flight['bags_allowed']):
+                if (flight['destination'] not in airports_visited and
+                    layover >= min_layover and layover <= max_layover and
+                        bags <= flight['bags_allowed']):
 
                     # create new combinations based on the previous route
                     # we need to keep the original route and make combinations
@@ -129,10 +134,42 @@ def construct_routes(origin, destination, bags_count, time_table):
                     # add new leg of the route
                     current_route_copy.append(flight)
 
-                    if flight['destination'] == destination:
+                    if flight['destination'] == B:
                         final_routes.append(current_route_copy)
                     else:
                         intermediate_routes.append(current_route_copy)
+
+    return final_routes
+
+
+def construct_routes(origin, destination, bags_count, time_table, return_flight):
+
+    # select the flights with the restrictions:
+    # - no airports are repeated in the route
+    # - layover at least 1 hour max 6 hours
+
+    min_layover = datetime.timedelta(hours=1)
+    max_layover = datetime.timedelta(hours=6)
+
+    final_routes = construct_routes_helper(origin, destination, bags_count,
+                                           time_table, min_layover, max_layover)
+
+    # search for the return flights
+    if return_flight:
+        res = []
+        for one_way in final_routes:
+            start_time = one_way[-1]['arrival']
+            return_routes = construct_routes_helper(destination, origin,
+                                                    bags_count, time_table, 
+                                                    min_layover, max_layover, 
+                                                    start_time)
+
+            for item in return_routes:
+                if len(item) > 0:
+                    one_way_copy = copy.deepcopy(one_way)
+                    res.append(one_way_copy + item)
+        
+        final_routes = res
 
     # populate the results with additinal info
     result = add_trip_data(final_routes, origin, destination, bags_count)
@@ -140,3 +177,5 @@ def construct_routes(origin, destination, bags_count, time_table):
     # convert to JSON
     res = json.dumps(result, indent=4)
     print(res)
+
+    print("correct travel time")
