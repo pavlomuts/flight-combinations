@@ -1,6 +1,7 @@
 import csv
 import json
 import datetime
+import copy
 
 
 def generate_combinations(input):
@@ -46,34 +47,40 @@ def get_data(path_to_file):
     return time_table
 
 
-def add_trip_data(routes, origin, destination, bags_count):
-    ext_data_routes = [] # list of all routes with additinal info
+def add_trip_data(all_routes, origin, destination, bags_count):
 
-    for flights in routes:
-        travel_time = str(flights[-1]['arrival'] - flights[0]['departure'])
-        
-        # format datetime back to string such that json can serialize it
-        for flight in flights:
+    ext_data_all_routes = []  # list of all routes with additinal info
+
+    for route in all_routes:
+
+        travel_time = str(route[-1]['arrival'] - route[0]['departure'])
+
+        # make copy of object since we will change a mutable object
+        formatted_route = copy.deepcopy(route)
+
+        # format datetime back to string such that it can be serialized in JSON
+        for flight in formatted_route:
             flight['departure'] = flight['departure'].isoformat()
             flight['arrival'] = flight['arrival'].isoformat()
 
-        single_route = {}
-        single_route['flights'] = flights
-        single_route['bags_allowed'] = min(item['bags_allowed'] for item in flights)
-        single_route['bags_count'] = bags_count
-        single_route['destination'] = destination
-        single_route['origin'] = origin
-        single_route['total_price'] = sum(
-            item['base_price'] + bags_count * item['bag_price'] for item in flights)
+        ext_data_single_route = {}
+        ext_data_single_route['flights'] = formatted_route
+        ext_data_single_route['bags_allowed'] = min(
+            item['bags_allowed'] for item in formatted_route)
+        ext_data_single_route['bags_count'] = bags_count
+        ext_data_single_route['destination'] = destination
+        ext_data_single_route['origin'] = origin
+        ext_data_single_route['total_price'] = sum(
+            item['base_price'] + bags_count * item['bag_price'] for item in formatted_route)
 
-        single_route['travel_time'] = travel_time
+        ext_data_single_route['travel_time'] = travel_time
 
-        ext_data_routes.append(single_route)
-    
+        ext_data_all_routes.append(ext_data_single_route)
+
     # sort routes by their total price
-    ext_data_routes.sort(key=lambda x: x['total_price'])
+    ext_data_all_routes.sort(key=lambda x: x['total_price'])
 
-    return ext_data_routes
+    return ext_data_all_routes
 
 
 def construct_routes(origin, destination, bags_count, time_table):
@@ -82,15 +89,50 @@ def construct_routes(origin, destination, bags_count, time_table):
     intermediate_routes = []
 
     for flight in time_table:
-        if flight['origin'] == origin:
+
+        if flight['origin'] == origin and bags_count <= flight['bags_allowed']:
             if flight['destination'] == destination:
                 final_routes.append([flight])
             else:
                 intermediate_routes.append([flight])
 
     while intermediate_routes:
+
         current_route = intermediate_routes.pop()
         airports_visited = set(item['origin'] for item in current_route)
+
+        # select the flights with the restrictions:
+        # - no airports are repeated in the route
+        # - layover at least 1 hour max 6 hours
+
+        min_layover = datetime.timedelta(hours=1)
+        max_layover = datetime.timedelta(hours=6)
+
+        for flight in time_table:
+
+            # consider only the airports where we arrived
+            if flight['origin'] == current_route[-1]['destination']:
+                
+                # compute layover time for this leg
+                layover = flight['departure'] - current_route[-1]['arrival']
+
+                # apply the restrictions above
+                if (flight['destination'] not in airports_visited and 
+                    layover >= min_layover and layover <= max_layover and 
+                    bags_count <= flight['bags_allowed']):
+
+                    # create new combinations based on the previous route
+                    # we need to keep the original route and make combinations
+                    # starting from the original
+                    current_route_copy = copy.deepcopy(current_route)
+
+                    # add new leg of the route
+                    current_route_copy.append(flight)
+
+                    if flight['destination'] == destination:
+                        final_routes.append(current_route_copy)
+                    else:
+                        intermediate_routes.append(current_route_copy)
 
     # populate the results with additinal info
     result = add_trip_data(final_routes, origin, destination, bags_count)
