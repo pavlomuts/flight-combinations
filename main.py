@@ -1,7 +1,7 @@
 
 from arg_parser import parse_args
-from combinations import generate_combinations
+from combinations import print_combinations
 
 input = parse_args()
 
-generate_combinations(input)
+print_combinations(input)
