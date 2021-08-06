@@ -1,7 +1,13 @@
+from source.arg_parser import parse_args
+from source.combinations import print_combinations
 
-from arg_parser import parse_args
-from combinations import print_combinations
 
-input = parse_args()
+def main():
+    """Main function"""
+    input = parse_args()
 
-print_combinations(input)
+    print_combinations(input)
+
+
+if __name__ == '__main__':
+    main()

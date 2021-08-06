@@ -5,13 +5,17 @@ import copy
 
 
 def print_combinations(input):
+    """Main function that processes data source, generates flight combination 
+    and converts the results to JSON"""
 
+    # get input data
     data_source = input['data_source']
     origin = input['origin']
     destination = input['destination']
     return_flight = input['return']
     bags_count = input['bags']
 
+    #whole timetable
     time_table = get_data(data_source)
 
     # select the flights with the restrictions:
@@ -63,49 +67,86 @@ def print_combinations(input):
 
 
 def get_data(path_to_file):
+    """Process the data source file:
+    - check whether given file exist
+    - check if all needed fields are provided
+    - check if particular fileds can be transformed into datetime format
+    - check if particular fileds can be transformed into a number
+    Reurn list of flights.
+    """
 
     try:
         data_file = open(path_to_file)
     except FileNotFoundError as e:
         print(e)
+        print("Please an existing data file")
         exit()
 
     reader = csv.DictReader(data_file)
+    
+    # check if all neccessary fields exist
 
+    # define expected field names
+    expected_fields = ['flight_no', 'origin', 'destination', 'departure',
+                       'arrival', 'base_price', 'bag_price', 'bags_allowed']
+    
+    # set for quick searching
+    obtained_fields = set(reader.fieldnames)
+
+    if any(field not in obtained_fields for field in expected_fields):
+        print("Some fields are missing, please refer to the examples " 
+        "provided in the folder 'example'")
+        exit()
+
+    # list of data
     time_table = []
 
     for flight in reader:
-        
-        # convert time strings into datetime objects 
-        flight['departure'] = datetime.datetime.fromisoformat(
-            flight['departure'])
-        flight['arrival'] = datetime.datetime.fromisoformat(
-            flight['arrival'])
+
+        # convert time strings into datetime objects
+        try:
+            flight['departure'] = datetime.datetime.fromisoformat(
+                flight['departure'])
+            flight['arrival'] = datetime.datetime.fromisoformat(
+                flight['arrival'])
+        except ValueError as e:
+            print(e)
+            print("Please provide valid iso format string for date time fields")
+            exit()
 
         # convert some fields from string into numbers
-        flight['base_price'] = float(flight['base_price'])
-        flight['bag_price'] = float(flight['bag_price'])
-        flight['bags_allowed'] = int(flight['bags_allowed'])
+        try:
+            flight['base_price'] = float(flight['base_price'])
+            flight['bag_price'] = float(flight['bag_price'])
+            flight['bags_allowed'] = int(flight['bags_allowed'])
+        except ValueError as e:
+            print(e)
+            print("Please provide valid numbers for number fields")
+            exit()
 
         time_table.append(flight)
-
-    # todo make validation of data
 
     return time_table
 
 
 def add_trip_data(all_routes, origin, destination, bags_count, return_flight):
+    """Compute for each route additional data such as travel time, 
+    total price etc and sort it by total price."""
 
-    ext_data_all_routes = []  # list of all routes with additinal info
+    # list of all routes with additinal info
+    ext_data_all_routes = []
 
     for route in all_routes:
-
+        
+        # in case of a return flight do not count a stay at the destination
         if return_flight:
-
+            
+            # find the destination flight
             for i in range(len(route)):
                 if route[i]['destination'] == destination:
                     break
-
+            
+            # exclude time spent at destination
             travel_time = str(route[i]['arrival'] - route[0]['departure'] +
                               route[-1]['arrival'] - route[i + 1]['departure'])
         else:
@@ -119,6 +160,7 @@ def add_trip_data(all_routes, origin, destination, bags_count, return_flight):
             flight['departure'] = flight['departure'].isoformat()
             flight['arrival'] = flight['arrival'].isoformat()
 
+        # make dictionary that corresponds to requirements
         ext_data_single_route = {}
         ext_data_single_route['flights'] = formatted_route
         ext_data_single_route['bags_allowed'] = min(
@@ -140,6 +182,13 @@ def add_trip_data(all_routes, origin, destination, bags_count, return_flight):
 
 
 def construct_routes(A, B, bags, time_table, min_layover, max_layover, start_time=None):
+    """Construct flights combinations between A and B with given restrictions: 
+    - min_layover < layover < max_layover
+    - Airports in the route must be unique
+    - The earliest departure time may be given as optional argument
+    
+    Return all combinations
+    """
 
     # list of complete routes that have full path from origin to destination
     complete_routes = []
@@ -147,6 +196,7 @@ def construct_routes(A, B, bags, time_table, min_layover, max_layover, start_tim
     # list of incomplete routes that do not have a path from origin to destination
     incomplete_routes = []
 
+    # add initial routes to the lists above
     for flight in time_table:
 
         if start_time is None:
