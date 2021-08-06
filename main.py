@@ -1,7 +1,13 @@
+from source.arg_parser import parse_args
+from source.combinations import print_combinations
 
-import csv
 
-with open('example/example0.csv') as file:
-    reader = csv.reader(file)
-    for row in reader:
-        print(row)
+def main():
+    """Main function"""
+    input = parse_args()
+
+    print_combinations(input)
+
+
+if __name__ == '__main__':
+    main()
