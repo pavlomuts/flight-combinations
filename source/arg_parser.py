@@ -15,9 +15,9 @@ def parse_args():
     p.add_argument('destination', help='Destination airport of the trip',
                    type=str)
 
-    # optional arguments 
+    # optional arguments
     p.add_argument('--return',
-                   help='Tell whether return flights should be searched, default False', 
+                   help='Tell whether return flights should be searched, default False',
                    dest='return_flight', action='store_true')
     p.set_defaults(return_flight=False)
 

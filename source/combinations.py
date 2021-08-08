@@ -5,7 +5,7 @@ import copy
 
 
 def print_combinations(input):
-    """Main function that processes data source, generates flight combination 
+    """Main function that processes data source, generates flight combination
     and converts the results to JSON"""
 
     # get input data
@@ -15,7 +15,7 @@ def print_combinations(input):
     return_flight = input['return_flight']
     bags_count = input['bags']
 
-    #whole timetable
+    # whole timetable
     time_table = get_data(data_source)
 
     # select the flights with the restrictions:
@@ -40,7 +40,8 @@ def print_combinations(input):
             start_time = one_way_route[-1]['arrival']
 
             # get flight combinations between destination and origin
-            return_routes_all = construct_routes(destination, origin, bags_count,
+            return_routes_all = construct_routes(destination, origin,
+                                                 bags_count,
                                                  time_table, min_layover,
                                                  max_layover, start_time)
 
@@ -83,19 +84,19 @@ def get_data(path_to_file):
         exit()
 
     reader = csv.DictReader(data_file)
-    
+
     # check if all neccessary fields exist
 
     # define expected field names
     expected_fields = ['flight_no', 'origin', 'destination', 'departure',
                        'arrival', 'base_price', 'bag_price', 'bags_allowed']
-    
+
     # set for quick searching
     obtained_fields = set(reader.fieldnames)
 
     if any(field not in obtained_fields for field in expected_fields):
-        print("Some fields are missing, please refer to the examples " 
-        "provided in the folder 'example'")
+        print("Some fields are missing, please refer to the examples "
+              "provided in the folder 'example'")
         exit()
 
     # list of data
@@ -130,22 +131,22 @@ def get_data(path_to_file):
 
 
 def add_trip_data(all_routes, origin, destination, bags_count, return_flight):
-    """Compute for each route additional data such as travel time, 
+    """Compute for each route additional data such as travel time,
     total price etc and sort it by total price."""
 
     # list of all routes with additinal info
     ext_data_all_routes = []
 
     for route in all_routes:
-        
+
         # in case of a return flight do not count a stay at the destination
         if return_flight:
-            
+
             # find the destination flight
             for i in range(len(route)):
                 if route[i]['destination'] == destination:
                     break
-            
+
             # exclude time spent at destination
             travel_time = str(route[i]['arrival'] - route[0]['departure'] +
                               route[-1]['arrival'] - route[i + 1]['departure'])
@@ -169,7 +170,8 @@ def add_trip_data(all_routes, origin, destination, bags_count, return_flight):
         ext_data_single_route['destination'] = destination
         ext_data_single_route['origin'] = origin
         ext_data_single_route['total_price'] = sum(
-            item['base_price'] + bags_count * item['bag_price'] for item in formatted_route)
+            item['base_price'] + bags_count * item['bag_price'] for item in
+            formatted_route)
 
         ext_data_single_route['travel_time'] = travel_time
 
@@ -181,12 +183,13 @@ def add_trip_data(all_routes, origin, destination, bags_count, return_flight):
     return ext_data_all_routes
 
 
-def construct_routes(A, B, bags, time_table, min_layover, max_layover, start_time=None):
-    """Construct flights combinations between A and B with given restrictions: 
+def construct_routes(A, B, bags, time_table, min_layover, max_layover,
+                     start_time=None):
+    """Construct flights combinations between A and B with given restrictions:
     - min_layover < layover < max_layover
     - Airports in the route must be unique
     - The earliest departure time may be given as optional argument
-    
+
     Return all combinations
     """
 
@@ -238,7 +241,7 @@ def construct_routes(A, B, bags, time_table, min_layover, max_layover, start_tim
 
                 # apply the layover restrictions
                 if (flight['destination'] not in airports_visited and
-                    layover >= min_layover and layover <= max_layover and
+                        layover >= min_layover and layover <= max_layover and
                         bags <= flight['bags_allowed']):
 
                     # create new combinations by appending to the current route

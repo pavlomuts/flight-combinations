@@ -38,7 +38,7 @@ optional arguments:
 ### Example of usage
 Command
 ```
-python main.py example/example2.csv GXV IUQ --bags=2 --return=True
+python main.py example/example2.csv GXV IUQ --bags=2 --return
 ```
 will search for return flights between GXV and IUQ with 2 bags at the 
 file example/example2.csv.
