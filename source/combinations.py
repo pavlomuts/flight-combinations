@@ -12,7 +12,7 @@ def print_combinations(input):
     data_source = input['data_source']
     origin = input['origin']
     destination = input['destination']
-    return_flight = input['return']
+    return_flight = input['return_flight']
     bags_count = input['bags']
 
     #whole timetable
